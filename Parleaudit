@@ -1,0 +1,2537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Parle Stock Audit - Field Operations & Lead Review Desk</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            parle: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              800: '#92400e',
+              900: '#78350f',
+              red: '#c22229'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    .touch-btn:active { transform: scale(0.97); }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col antialiased pb-24 sm:pb-8">
+
+  <!-- TOP APP BAR -->
+  <header class="sticky top-0 z-40 bg-slate-900 text-white shadow-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-parle-red to-amber-600 flex items-center justify-center font-black text-white text-xl shadow-md">
+          P
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-base sm:text-lg tracking-tight">Parle Stock Audit</span>
+            <span id="roleIndicatorBadge" class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider">Auditor Portal</span>
+          </div>
+          <div class="flex items-center gap-2 text-[11px] text-slate-400">
+            <span class="flex items-center gap-1">
+              <span id="cloudStatusIndicatorDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span id="cloudStatusIndicatorText">Cloud Live</span>
+            </span>
+            <span>•</span>
+            <span>Max 2 Auditors / Depot</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button onclick="openConnectAdminModal()" class="px-2.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 touch-btn" title="Contact Lead Desk">
+          <i class="ph-bold ph-headset text-sm"></i>
+          <span class="hidden sm:inline">Connect with Admin</span>
+          <span class="sm:hidden">Help</span>
+        </button>
+
+        <div class="bg-slate-800 p-1 rounded-xl flex items-center border border-slate-700 text-xs">
+          <button id="navAuditorBtn" onclick="switchToAuditorView()" class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-amber-600 text-white shadow">
+            <i class="ph-bold ph-clipboard-text"></i>
+            <span class="hidden sm:inline">Auditor</span> Field
+          </button>
+          <button id="navLeadBtn" onclick="requestLeadDeskAccess()" class="px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
+            <i class="ph-bold ph-lock-key text-amber-400"></i>
+            <span class="hidden sm:inline">Lead</span> Review Desk
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- FLOATING SAVE BAR -->
+  <div id="stickySaveBar" class="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-lg flex items-center justify-between sm:hidden">
+    <div class="flex items-center gap-2 text-xs">
+      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+      <span id="mobileStatusIndicator" class="font-semibold text-slate-600">Ready</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="openConnectAdminModal()" class="px-3 py-2 bg-amber-50 text-amber-800 font-bold text-xs rounded-xl border border-amber-300 flex items-center gap-1">
+        <i class="ph-bold ph-headset"></i> Admin
+      </button>
+      <button onclick="saveAuditProgress(false)" class="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5 touch-btn">
+        <i class="ph-bold ph-floppy-disk text-amber-400"></i>
+        <span>Save Draft</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN APP WORKSPACE -->
+  <main class="max-w-7xl mx-auto p-4 sm:p-6 w-full flex-grow space-y-6">
+
+    <!-- VIEW 1: AUDITOR FIELD VIEW -->
+    <div id="viewAuditor" class="space-y-5">
+      
+      <!-- 1. LOCATION SELECTION & USER ID -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <i class="ph-bold ph-key text-amber-600 text-lg"></i>
+              Depot Authorization & User ID
+            </h2>
+            <p class="text-xs text-slate-500">Enter the Depot User ID provided by the Lead Desk. Maximum 2 auditors allowed per depot.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="badgeAuditStatus" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">
+              No Depot Active
+            </span>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+          <label class="block text-xs font-bold text-slate-700">Enter Location User ID *</label>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input type="text" id="inputDepotUserId" placeholder="e.g. PARLE-3068 or 3068" class="flex-grow bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-mono font-bold uppercase focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <button onclick="handleAuthorizeDepotUserId()" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow transition touch-btn flex items-center justify-center gap-1.5">
+              <i class="ph-bold ph-sign-in text-base"></i>
+              <span>Activate Location</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Your Active Authorized Depots (Tap to switch):</label>
+          <div id="authorizedDepotsList" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <div id="depotMetaChip" class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 flex flex-wrap justify-between items-center gap-2">
+          <div class="flex items-center gap-2">
+            <i class="ph-fill ph-map-pin text-slate-400 text-lg" id="chipPinIcon"></i>
+            <div>
+              <p class="font-bold text-slate-900" id="chipDepotName">No depot selected</p>
+              <p class="text-[11px] text-slate-500" id="chipDepotState">Activate a location above</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. AUDITOR REGISTRATION & STRICT SLOT BOOKING -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <i class="ph-bold ph-identification-card text-amber-600 text-lg"></i>
+              Auditor Slot Booking (Strict 2 Auditors Max)
+            </h2>
+            <p class="text-xs text-slate-500">Enter complete Name and 10-digit number to claim Slot 1 or Slot 2 for this depot.</p>
+          </div>
+          <span id="badgeSlotAssigned" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 font-mono">
+            Unregistered
+          </span>
+        </div>
+
+        <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-200 space-y-3 text-xs">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Auditor Full Name *</label>
+              <input type="text" id="inputAuditorName" placeholder="e.g. S. Singhvi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Auditor Mobile Number (Exact 10 Digits) *</label>
+              <input type="tel" id="inputAuditorPhone" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10);" placeholder="10-digit mobile number" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 font-mono font-bold tracking-wider focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+          </div>
+          <div class="flex justify-end pt-1">
+            <button onclick="bookAuditorSlot()" id="btnBookSlot" class="px-4 py-2 bg-slate-900 hover:bg-black text-white font-bold rounded-xl shadow transition touch-btn flex items-center gap-1.5">
+              <i class="ph-bold ph-lock-key text-amber-400"></i>
+              <span>Register & Claim Slot</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. MULTI-DAY GEO-SELFIE ATTENDANCE -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <i class="ph-bold ph-camera text-amber-600 text-lg"></i>
+              Daily Geo-Selfie Attendance Log
+            </h2>
+            <p class="text-xs text-slate-500">Check in on arrival. Return later to complete departure check-out on the same date.</p>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button onclick="saveAuditProgress(false)" class="px-3 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-1">
+              <i class="ph-bold ph-floppy-disk text-amber-600"></i> Save Draft
+            </button>
+            <button onclick="openAttendanceModal()" id="btnLogAttendanceMaster" class="flex-grow sm:flex-grow-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow touch-btn">
+              <i class="ph-bold ph-plus-circle text-base"></i>
+              <span id="btnLogAttendanceText">Log Attendance</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="attendanceContainer" class="space-y-3">
+          <div class="text-center py-8 text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            Please register your name and 10-digit mobile number above to unlock attendance.
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. DELIVERABLES & WORKING PAPERS -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-5">
+        <div class="border-b border-slate-100 pb-3 flex flex-wrap justify-between items-center gap-2">
+          <div>
+            <span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded uppercase tracking-wider">Final Phase</span>
+            <h2 class="text-sm font-bold text-slate-900 mt-1">Audit Reports, Count Papers & Deliverables</h2>
+            <p class="text-xs text-slate-500">Files sync directly to the Google Drive audit directory.</p>
+          </div>
+          <button onclick="saveAuditProgress(false)" class="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-1.5">
+            <i class="ph-bold ph-floppy-disk text-amber-600"></i> Save Draft
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <!-- Working Papers -->
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
+            <div>
+              <div class="flex items-center justify-between">
+                <p class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                  <i class="ph-bold ph-files text-rose-600 text-base"></i> Scanned Working Papers *
+                </p>
+                <span id="wpBadgeCount" class="text-[10px] font-bold bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full">0 Attached</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Upload signed count sheets or gate passes (PDF).</p>
+            </div>
+            
+            <div class="space-y-2">
+              <label class="cursor-pointer flex items-center justify-center gap-2 w-full py-2 bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 rounded-xl text-xs font-bold transition touch-btn">
+                <i class="ph-bold ph-file-plus"></i> Select PDF Files
+                <input type="file" id="fileWorkingPapers" multiple accept=".pdf,application/pdf" onchange="handleMultipleWorkingPapers(event)" class="hidden">
+              </label>
+
+              <div id="wpFileListContainer" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                <p class="text-[10px] text-slate-400 italic">No working papers attached yet</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Raw ZSD Dump -->
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
+            <div>
+              <p class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                <i class="ph-bold ph-database text-blue-600 text-base"></i> Depot Raw ZSD Dump *
+              </p>
+              <p class="text-[11px] text-slate-500">Raw SAP/ERP SD stock report export (.xlsx, .csv, .txt).</p>
+            </div>
+            <div>
+              <input type="file" id="fileZsdDump" accept=".xlsx,.xls,.csv,.txt" onchange="handleFilePicked('zsd')" class="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+              <div id="statusZsd" class="text-[10px] text-slate-400 mt-1 italic">Not attached</div>
+            </div>
+          </div>
+
+          <!-- Final Reconciled Excel -->
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
+            <div>
+              <p class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                <i class="ph-bold ph-file-xls text-emerald-600 text-base"></i> Reconciled Excel File *
+              </p>
+              <p class="text-[11px] text-slate-500">Physical vs Book reconciliation workbook (.xlsx).</p>
+            </div>
+            <div>
+              <input type="file" id="fileReconExcel" accept=".xlsx,.xls" onchange="handleFilePicked('excel')" class="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+              <div id="statusExcel" class="text-[10px] text-slate-400 mt-1 italic">Not attached</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrap Invoice -->
+        <div class="p-4 bg-slate-50/80 rounded-xl border border-slate-200 space-y-3 text-xs">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <p class="font-bold text-slate-900 flex items-center gap-1.5">
+                <i class="ph-bold ph-receipt text-amber-600 text-base"></i>
+                Scrap Invoice Verification
+              </p>
+              <p class="text-[11px] text-slate-500">Confirm if depot issued any damaged/scrap disposal invoices.</p>
+            </div>
+            <span id="badgeScrapStatus" class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-slate-200 text-slate-600">
+              Pending Selection
+            </span>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-2">Scrap Invoice Available at Depot? *</label>
+            <div class="flex items-center gap-6">
+              <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-800">
+                <input type="radio" name="scrapInvoiceAvailable" value="Yes" onchange="handleScrapInvoiceToggle(true)" class="w-4 h-4 text-amber-600 focus:ring-amber-500">
+                <span>Yes (Invoice Available — Photo Required)</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-800">
+                <input type="radio" name="scrapInvoiceAvailable" value="No" onchange="handleScrapInvoiceToggle(false)" class="w-4 h-4 text-amber-600 focus:ring-amber-500">
+                <span>No (No Scrap / Not Applicable — Ignore Photo)</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="scrapPhotoSection" class="hidden p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-3 mt-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-bold text-amber-900 text-xs flex items-center gap-1.5">
+                  <i class="ph-bold ph-camera text-base"></i> Capture / Upload Scrap Invoice Photo
+                </p>
+                <p class="text-[11px] text-amber-800/80">Click a clear photo of the stamped scrap bill</p>
+              </div>
+              <span id="labelScrapPhotoStatus" class="text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-0.5 rounded">
+                Photo Required
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow touch-btn">
+                  <i class="ph-bold ph-camera"></i> Click Scrap Invoice Photo
+                  <input type="file" id="fileScrapInvoice" accept="image/*" capture="environment" onchange="handleScrapPhotoUpload(event)" class="hidden">
+                </label>
+                <p id="scrapFileName" class="text-[10px] text-slate-500 mt-1 italic truncate">No photo chosen</p>
+              </div>
+
+              <div id="scrapPhotoPreviewBox" class="hidden bg-white p-2.5 rounded-xl border border-amber-300 flex items-center gap-3">
+                <img id="imgScrapInvoiceThumb" class="w-14 h-14 rounded-lg object-cover border" alt="Scrap Invoice">
+                <div class="text-[11px] leading-tight overflow-hidden space-y-0.5">
+                  <p class="font-bold text-slate-900">Scrap Invoice Stamped</p>
+                  <p class="text-slate-500 text-[10px]" id="scrapInvoiceTimestamp">Recorded</p>
+                  <span class="text-emerald-700 font-bold text-[10px]">Photo Attached ✓</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-xs">
+          <label class="block font-semibold text-slate-700 mb-1">Auditor Remarks / Variance Justification</label>
+          <textarea id="inputRemarks" rows="2" oninput="saveAuditProgress(true)" placeholder="Record damaged carton details, cutoff timing, or stock observations..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <button onclick="saveAuditProgress(false)" class="w-full sm:w-auto px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 touch-btn">
+            <i class="ph-bold ph-floppy-disk text-amber-600"></i> Save Draft
+          </button>
+          <button onclick="submitAuditFinal()" id="btnCompleteFinal" class="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 touch-btn">
+            <i class="ph-bold ph-paper-plane-tilt text-base"></i> Complete & Sync to Cloud & Drive
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: LEAD AUDITOR REVIEW DESK -->
+    <div id="viewLead" class="space-y-6 hidden">
+      <div class="bg-slate-900 text-white p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3 shadow-md">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 bg-amber-500/20 text-amber-400 rounded-xl">
+            <i class="ph-bold ph-shield-check text-xl"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm">Lead Reviewer Session Active</h3>
+            <p class="text-xs text-slate-400">Strict 2 Auditors/Depot Enforcement • Read-Only Dossier View & Slot Revocation</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="fetchAuditsFromCloud()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow touch-btn">
+            <i class="ph-bold ph-arrows-clockwise text-sm"></i>
+            <span>Refresh Cloud Data</span>
+          </button>
+          <button onclick="lockLeadDesk()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow">
+            <i class="ph-bold ph-lock"></i> Exit & Lock Desk
+          </button>
+        </div>
+      </div>
+
+      <!-- MASTER DEPOT DIRECTORY CARD -->
+      <div class="bg-white border-2 border-amber-300 rounded-2xl p-5 shadow-sm space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h4 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <i class="ph-bold ph-address-book text-amber-600 text-base"></i>
+              Depot User ID Directory (Provide to Field Auditors)
+            </h4>
+            <p class="text-xs text-slate-500">Share these User IDs with assigned auditors. A maximum of 2 auditors can book slots for each depot.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-xs pt-1">
+          <div id="directoryContainer" class="contents"></div>
+        </div>
+      </div>
+
+      <!-- GOOGLE SHEETS & DRIVE CLOUD SYNC CARD -->
+      <div class="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white p-5 rounded-2xl border border-indigo-700/50 shadow-lg space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h3 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+                <i class="ph-bold ph-cloud-arrow-up text-indigo-400"></i>
+                Google Sheets & Drive Integration
+              </h3>
+            </div>
+            <p class="text-xs text-indigo-200 mt-0.5">Primary Key: <code class="font-mono bg-indigo-950 px-1 py-0.5 rounded">AUDIT-&lt;DepotCode&gt;-SLOT1</code> and <code class="font-mono bg-indigo-950 px-1 py-0.5 rounded">AUDIT-&lt;DepotCode&gt;-SLOT2</code>. Files upload to <code class="font-mono bg-indigo-950 px-1 py-0.5 rounded">Parle_Stock_Audits</code> folder in Drive.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="openAppsScriptModal()" class="px-3 py-1.5 bg-indigo-800/80 hover:bg-indigo-700 text-indigo-200 hover:text-white text-xs font-bold rounded-xl border border-indigo-500/40 flex items-center gap-1.5 transition">
+              <i class="ph-bold ph-code"></i> View Updated Apps Script Code
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div class="md:col-span-2">
+            <label class="block font-semibold text-indigo-200 mb-1">Google Apps Script Web App Deployment URL</label>
+            <div class="flex gap-2">
+              <input type="url" id="inputCloudScriptUrl" value="https://script.google.com/macros/s/AKfycbwT2kbKUL2_PaDkug-lTWiQ8GRymxSJ3HQVI-hYekrUWbblY9ubiRSfMnFKcFdvMcxtxA/exec" class="flex-grow bg-slate-950/70 border border-indigo-500/50 text-white rounded-xl px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none">
+              <button onclick="saveCloudScriptUrl()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition touch-btn flex items-center gap-1">
+                <i class="ph-bold ph-check"></i> Save URL
+              </button>
+            </div>
+          </div>
+          <div class="bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/60 flex flex-col justify-between">
+            <span class="text-[10px] font-bold text-indigo-300 uppercase">Cloud Sync Status</span>
+            <p id="labelCloudSyncStatus" class="font-bold text-xs text-emerald-400">Connected & Active ✓</p>
+            <span class="text-[10px] text-slate-400" id="labelCloudLastSync">Slots 1 & 2 Guard Active</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEAD CONTROLS -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- CHANGE PIN -->
+        <div class="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-800 px-2 py-0.5 rounded">Security</span>
+              <span class="text-[10px] font-bold text-slate-500">PIN Access</span>
+            </div>
+            <h4 class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <i class="ph-bold ph-key text-amber-600"></i> Change Reviewer PIN
+            </h4>
+            <p class="text-xs text-slate-500 mt-1">Update the security PIN required to unlock this Lead Review Desk.</p>
+          </div>
+
+          <div class="space-y-2 pt-2 border-t border-slate-100 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Current PIN</label>
+              <input type="password" id="inputCurrentPin" maxlength="6" placeholder="Current PIN" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">New PIN (4-6 digits)</label>
+              <input type="password" id="inputNewPin" maxlength="6" placeholder="New PIN" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Confirm New PIN</label>
+              <input type="password" id="inputConfirmPin" maxlength="6" placeholder="Confirm New PIN" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono">
+            </div>
+            <div class="flex gap-2 pt-1">
+              <button onclick="updateReviewerPin()" class="flex-grow py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow transition touch-btn text-xs">
+                Save New PIN
+              </button>
+              <button onclick="resetPinToDefault()" title="Reset PIN to default 1234" class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold">
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- HELPDESK INFO -->
+        <div class="bg-white border-2 border-indigo-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded">Helpdesk</span>
+              <span class="text-[10px] font-bold text-indigo-700">WhatsApp / Call</span>
+            </div>
+            <h4 class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <i class="ph-bold ph-phone-call text-indigo-600"></i> Admin Contact Settings
+            </h4>
+            <p class="text-xs text-slate-500 mt-1">Details shown to auditors when requesting User IDs or slot support.</p>
+          </div>
+
+          <div class="space-y-2 pt-2 border-t border-slate-100 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Admin / Lead Name</label>
+              <input type="text" id="adminSettingName" placeholder="e.g. Lead CA Audit Desk" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">WhatsApp / Phone No.</label>
+              <input type="tel" id="adminSettingPhone" placeholder="+91 98765 43210" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium">
+            </div>
+            <button onclick="saveAdminSettings()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition touch-btn flex items-center justify-center gap-1">
+              <i class="ph-bold ph-floppy-disk"></i> Update Helpdesk Info
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-[11px] font-bold uppercase text-slate-500">Total Depots</p>
+          <p class="text-2xl font-black text-slate-900 mt-1">21</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">Master Locations (42 Max Slots)</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-[11px] font-bold uppercase text-amber-600">Active Field Audits</p>
+          <p id="kpiActive" class="text-2xl font-black text-amber-600 mt-1">0</p>
+          <p class="text-[11px] text-amber-600/80 mt-0.5">Slots In Progress</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-[11px] font-bold uppercase text-emerald-600">Completed Audits</p>
+          <p id="kpiCompleted" class="text-2xl font-black text-emerald-600 mt-1">0</p>
+          <p class="text-[11px] text-emerald-600/80 mt-0.5">Submitted Reports</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-[11px] font-bold uppercase text-indigo-600">Total Man-Days</p>
+          <p id="kpiManDays" class="text-2xl font-black text-indigo-600 mt-1">0</p>
+          <p class="text-[11px] text-indigo-500 mt-0.5">Logged Across All Slots</p>
+        </div>
+      </div>
+
+      <!-- Action & Search -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div class="relative w-full sm:w-80">
+          <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
+          <input type="text" id="leadSearch" onkeyup="renderLeadTable()" placeholder="Search code, user id, or auditor..." class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button onclick="exportMasterCSV()" class="px-4 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow flex items-center gap-1.5 touch-btn">
+            <i class="ph-bold ph-file-csv text-amber-400"></i> Export Consolidated CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Master Table: VIEW AND REVOKE -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                <th class="py-3.5 px-4">Depot Code (User ID)</th>
+                <th class="py-3.5 px-4">Slot</th>
+                <th class="py-3.5 px-4">Depot Name & City</th>
+                <th class="py-3.5 px-4">Auditor (10-Digit Mobile)</th>
+                <th class="py-3.5 px-4">Scrap Invoice</th>
+                <th class="py-3.5 px-4">Man-Days</th>
+                <th class="py-3.5 px-4">Working Papers</th>
+                <th class="py-3.5 px-4">Deliverables</th>
+                <th class="py-3.5 px-4">Status</th>
+                <th class="py-3.5 px-4 text-right">Lead Action</th>
+              </tr>
+            </thead>
+            <tbody id="leadTableBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL: READ-ONLY VIEW AUDIT DETAILS -->
+  <div id="viewAuditModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="ph-bold ph-eye text-amber-600"></i>
+            Depot Audit Dossier (Read-Only)
+          </h3>
+          <p id="viewModalDepotHeader" class="text-xs text-slate-500">Depot Information</p>
+        </div>
+        <button onclick="closeViewAuditModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div>
+            <span class="text-slate-400 font-semibold block text-[10px]">Auditor Name</span>
+            <p id="viewModalAuditorName" class="font-bold text-slate-800 text-sm">—</p>
+          </div>
+          <div>
+            <span class="text-slate-400 font-semibold block text-[10px]">Auditor Mobile</span>
+            <p id="viewModalAuditorPhone" class="font-mono font-bold text-slate-900 text-sm">—</p>
+          </div>
+          <div>
+            <span class="text-slate-400 font-semibold block text-[10px]">Audit Status</span>
+            <span id="viewModalStatus" class="font-bold px-2 py-0.5 rounded text-[10px]">Scheduled</span>
+          </div>
+          <div>
+            <span class="text-slate-400 font-semibold block text-[10px]">Scrap Invoice Status</span>
+            <span id="viewModalScrapStatus" class="font-semibold text-slate-700">—</span>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+            <i class="ph-bold ph-camera text-amber-600"></i> Attendance Logs
+          </h4>
+          <div id="viewModalAttendanceList" class="space-y-2"></div>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+            <i class="ph-bold ph-files text-rose-600"></i> Working Papers & Deliverables
+          </h4>
+          <div id="viewModalFilesList" class="space-y-1.5"></div>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+            <i class="ph-bold ph-notepad text-slate-600"></i> Auditor Remarks
+          </h4>
+          <p id="viewModalRemarks" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 italic">None recorded.</p>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-100">
+        <button onclick="closeViewAuditModal()" class="px-5 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl">
+          Close Dossier
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: APPS SCRIPT CODE -->
+  <div id="appsScriptModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="ph-bold ph-google-chrome-logo text-emerald-600"></i>
+            Google Sheets & Drive Script (Apps Script)
+          </h3>
+          <p class="text-xs text-slate-500">Auto-saves and deletes revoked folders/rows from Google Drive and Sheets.</p>
+        </div>
+        <button onclick="closeAppsScriptModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="relative">
+        <textarea id="appsScriptCodeBlock" readonly rows="12" class="w-full bg-slate-900 text-emerald-400 font-mono text-[11px] p-4 rounded-xl focus:outline-none resize-none leading-relaxed select-all">function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Audits");
+  if (!sheet) {
+    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Audits");
+    sheet.appendRow(["Audit_ID", "Depot_Code", "Slot_Number", "Auditor_Name", "Auditor_Phone", "Status", "Man_Days", "Drive_Folder_URL", "Attendance_Drive_Links", "Working_Papers_Links", "ZSD_File_URL", "Excel_File_URL", "Scrap_Status", "Scrap_File_URL", "Remarks", "Last_Updated"]);
+  }
+  var rows = sheet.getDataRange().getValues();
+  var audits = [];
+  
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    if (!r[0]) continue;
+    audits.push({
+      id: String(r[0]),
+      depotCode: String(r[1]),
+      slotNumber: Number(r[2] || 1),
+      auditorName: String(r[3]),
+      auditorPhone: String(r[4]),
+      status: String(r[5]),
+      manDays: Number(r[6] || 0),
+      driveFolderUrl: String(r[7] || ""),
+      attendance: r[8] ? String(r[8]).split("\n") : [],
+      workingPapers: r[9] ? String(r[9]).split("\n") : [],
+      files: {
+        zsdDump: String(r[10] || ""),
+        reconciledExcel: String(r[11] || "")
+      },
+      scrapInvoiceAvailable: String(r[12] || ""),
+      scrapInvoiceUrl: String(r[13] || ""),
+      remarks: String(r[14] || ""),
+      lastUpdated: String(r[15] || "")
+    });
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify(audits))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Audits");
+    if (!sheet) {
+      sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Audits");
+      sheet.appendRow(["Audit_ID", "Depot_Code", "Slot_Number", "Auditor_Name", "Auditor_Phone", "Status", "Man_Days", "Drive_Folder_URL", "Attendance_Drive_Links", "Working_Papers_Links", "ZSD_File_URL", "Excel_File_URL", "Scrap_Status", "Scrap_File_URL", "Remarks", "Last_Updated"]);
+    }
+
+    var rootFolders = DriveApp.getFoldersByName("Parle_Stock_Audits");
+    var rootFolder = rootFolders.hasNext() ? rootFolders.next() : DriveApp.createFolder("Parle_Stock_Audits");
+    var depotFolderName = "Depot_" + data.depotCode + "_Slot_" + (data.slotNumber || 1);
+
+    if (data.status === "Revoked") {
+      var targetFolders = rootFolder.getFoldersByName(depotFolderName);
+      while (targetFolders.hasNext()) {
+        var folderToTrash = targetFolders.next();
+        folderToTrash.setTrashed(true);
+      }
+
+      var rows = sheet.getDataRange().getValues();
+      for (var i = rows.length - 1; i >= 1; i--) {
+        if (String(rows[i][0]) === String(data.id)) {
+          sheet.deleteRow(i + 1);
+          break;
+        }
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        message: "Record and folder deleted successfully for " + data.id
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var subFolders = rootFolder.getFoldersByName(depotFolderName);
+    var auditFolder = subFolders.hasNext() ? subFolders.next() : rootFolder.createFolder(depotFolderName);
+
+    function saveBase64File(folder, base64DataString, fileName) {
+      if (!base64DataString || !base64DataString.includes(",")) return "";
+      var parts = base64DataString.split(",");
+      var contentType = parts[0].split(":")[1].split(";")[0];
+      var decoded = Utilities.base64Decode(parts[1]);
+      var blob = Utilities.newBlob(decoded, contentType, fileName);
+      var file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      return file.getUrl();
+    }
+
+    var attendanceLinks = [];
+    if (data.attendance && data.attendance.length > 0) {
+      var attFolder = auditFolder.getFoldersByName("Attendance");
+      var attTarget = attFolder.hasNext() ? attFolder.next() : auditFolder.createFolder("Attendance");
+
+      data.attendance.forEach(function(day) {
+        var dayNum = day.day || 1;
+        if (day.checkin && day.checkin.photo && day.checkin.photo.startsWith("data:")) {
+          var inName = "Day_" + dayNum + "_Checkin_" + String(day.checkin.time || "").replace(/[: ]/g, "_") + ".jpg";
+          day.checkin.driveUrl = saveBase64File(attTarget, day.checkin.photo, inName);
+        }
+        if (day.checkout && day.checkout.photo && day.checkout.photo.startsWith("data:")) {
+          var outName = "Day_" + dayNum + "_Checkout_" + String(day.checkout.time || "").replace(/[: ]/g, "_") + ".jpg";
+          day.checkout.driveUrl = saveBase64File(attTarget, day.checkout.photo, outName);
+        }
+        attendanceLinks.push("Day " + dayNum + " (In: " + (day.checkin ? day.checkin.driveUrl : "N/A") + " | Out: " + (day.checkout ? day.checkout.driveUrl : "N/A") + ")");
+      });
+    }
+
+    var wpDriveLinks = [];
+    if (data.workingPapers && data.workingPapers.length > 0) {
+      var wpFolder = auditFolder.getFoldersByName("Working_Papers");
+      var wpTarget = wpFolder.hasNext() ? wpFolder.next() : auditFolder.createFolder("Working_Papers");
+
+      data.workingPapers.forEach(function(wp) {
+        if (wp.base64) {
+          var wpUrl = saveBase64File(wpTarget, wp.base64, wp.name);
+          wpDriveLinks.push(wp.name + " (" + wpUrl + ")");
+        }
+      });
+    }
+
+    var docsFolder = auditFolder.getFoldersByName("Deliverables");
+    var docsTarget = docsFolder.hasNext() ? docsFolder.next() : auditFolder.createFolder("Deliverables");
+
+    var zsdUrl = "";
+    if (data.files && data.files.zsdDataBase64) {
+      zsdUrl = saveBase64File(docsTarget, data.files.zsdDataBase64, data.files.zsdDump || "ZSD_Dump.xlsx");
+    }
+
+    var excelUrl = "";
+    if (data.files && data.files.excelDataBase64) {
+      excelUrl = saveBase64File(docsTarget, data.files.excelDataBase64, data.files.reconciledExcel || "Reconciled_Stock.xlsx");
+    }
+
+    var scrapUrl = "";
+    if (data.scrapInvoicePhoto && data.scrapInvoicePhoto.startsWith("data:")) {
+      scrapUrl = saveBase64File(docsTarget, data.scrapInvoicePhoto, data.scrapInvoiceFileName || "Scrap_Invoice.jpg");
+    }
+
+    var rows = sheet.getDataRange().getValues();
+    var rowIndex = -1;
+    for (var i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(data.id)) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+
+    var rowData = [
+      String(data.id),
+      String(data.depotCode),
+      data.slotNumber || 1,
+      data.auditorName || "",
+      String(data.auditorPhone || ""),
+      data.status || "In Progress",
+      data.attendance ? data.attendance.length : 0,
+      auditFolder.getUrl(),
+      attendanceLinks.join("\n"),
+      wpDriveLinks.join("\n"),
+      zsdUrl,
+      excelUrl,
+      data.scrapInvoiceAvailable || "No",
+      scrapUrl,
+      data.remarks || "",
+      new Date().toLocaleString()
+    ];
+
+    if (rowIndex > 0) {
+      sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+    } else {
+      sheet.appendRow(rowData);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: "success", 
+      folderUrl: auditFolder.getUrl(),
+      id: data.id 
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}</textarea>
+        <button onclick="copyAppsScriptCode()" class="absolute top-3 right-3 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1">
+          <i class="ph-bold ph-copy"></i>
+          <span id="copyBtnText">Copy Code</span>
+        </button>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="closeAppsScriptModal()" class="px-5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONNECT ADMIN -->
+  <div id="connectAdminModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
+      <div class="w-14 h-14 bg-amber-100 text-amber-700 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-inner">
+        <i class="ph-bold ph-headset"></i>
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Connect with Lead Auditor</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Depot User ID & Slot Coordination</p>
+      </div>
+
+      <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left space-y-2 text-xs">
+        <div>
+          <span class="text-[10px] uppercase font-bold text-slate-400">Lead Auditor / Admin</span>
+          <p id="modalAdminName" class="font-bold text-slate-800 text-sm">Lead CA / Central Audit Desk</p>
+        </div>
+        <div>
+          <span class="text-[10px] uppercase font-bold text-slate-400">Direct Contact Phone</span>
+          <p id="modalAdminPhone" class="font-mono font-bold text-slate-900">+91 98765 43210</p>
+        </div>
+        <div id="modalDepotContext" class="p-2 bg-amber-50 rounded-lg border border-amber-200 text-[11px] text-amber-900">
+          Current Active Depot: <strong id="modalDepotCodeLabel">None</strong>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-1">
+        <a id="btnAdminWhatsApp" href="#" target="_blank" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-2 touch-btn">
+          <i class="ph-bold ph-whatsapp-logo text-base"></i>
+          <span>WhatsApp Message</span>
+        </a>
+
+        <a id="btnAdminCall" href="tel:+919876543210" class="w-full py-2.5 px-4 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-2 touch-btn">
+          <i class="ph-bold ph-phone-call text-base"></i>
+          <span>Call Admin Desk</span>
+        </a>
+
+        <button onclick="closeConnectAdminModal()" class="w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-700">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: STRICT LEAD PIN CHALLENGE -->
+  <div id="passwordModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
+      <div class="w-14 h-14 bg-amber-100 text-amber-700 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-inner">
+        <i class="ph-bold ph-lock-key"></i>
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Lead Reviewer Access</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Enter reviewer authorization PIN to unlock management dashboard</p>
+      </div>
+
+      <div class="space-y-2">
+        <input type="password" id="leadPinInput" maxlength="6" placeholder="Enter PIN" class="w-full text-center text-xl tracking-widest font-mono font-bold bg-slate-50 border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        <p id="pinErrorMessage" class="text-xs text-rose-600 font-semibold hidden">Incorrect PIN. Try again.</p>
+        <p class="text-[11px] text-slate-400">Default security PIN: <code class="font-mono font-bold text-slate-600">1234</code></p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 pt-2">
+        <button onclick="closePasswordModal()" class="w-full py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl">
+          Cancel
+        </button>
+        <button onclick="verifyLeadPin()" class="w-full py-2.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow touch-btn">
+          Unlock Desk
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ATTENDANCE GEO-SELFIE -->
+  <div id="attendanceModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <i class="ph-bold ph-camera text-amber-600"></i> Record Daily Geo-Selfie
+          </h3>
+          <p id="modalDepotSubtitle" class="text-xs text-slate-500">Depot Name</p>
+        </div>
+        <button onclick="closeAttendanceModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div id="gpsStatusCard" class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <span id="gpsIndicator" class="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+          <span id="gpsStatusText" class="font-semibold text-slate-700 truncate">Acquiring live GPS...</span>
+        </div>
+        <button onclick="acquireLiveGPS()" class="text-[11px] font-bold text-amber-600 underline flex-shrink-0">Retry</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Audit Visit Date</label>
+          <input type="date" id="modalDayDate" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 font-medium">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Day Sequence</label>
+          <input type="number" id="modalDayNumber" min="1" max="15" value="1" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 font-medium">
+        </div>
+      </div>
+
+      <!-- Arrival Check-In -->
+      <div id="checkinSectionWrapper" class="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+            <i class="ph-bold ph-sign-in"></i> Arrival Check-In (Selfie)
+          </span>
+          <span id="statusCheckinDone" class="text-[10px] font-bold text-slate-500">Pending</span>
+        </div>
+
+        <label id="btnCheckinCaptureLabel" class="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow touch-btn">
+          <i class="ph-bold ph-camera"></i> Click Arrival Selfie + GPS
+          <input type="file" accept="image/*" capture="user" onchange="processNativeSelfie(event, 'checkin')" class="hidden">
+        </label>
+
+        <div id="previewCheckinBox" class="hidden bg-white p-2.5 rounded-xl border border-emerald-200 flex items-center gap-3">
+          <img id="imgCheckinThumb" class="w-14 h-14 rounded-lg object-cover border" alt="Checkin">
+          <div class="text-[11px] leading-tight overflow-hidden space-y-0.5">
+            <p class="font-bold text-slate-900" id="timeCheckinText">--:--</p>
+            <p class="font-mono text-slate-500 truncate" id="coordsCheckinText">0.000, 0.000</p>
+            <span class="text-emerald-700 font-semibold text-[10px]">Arrival Watermarked ✓</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Departure Check-Out -->
+      <div id="checkoutSectionWrapper" class="p-3.5 bg-rose-50/70 border border-rose-200 rounded-2xl space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-rose-900 flex items-center gap-1.5">
+            <i class="ph-bold ph-sign-out"></i> Departure Check-Out (Selfie)
+          </span>
+          <span id="statusCheckoutDone" class="text-[10px] font-bold text-slate-500">Pending Check-In</span>
+        </div>
+
+        <label id="btnCheckoutCaptureLabel" class="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow touch-btn">
+          <i class="ph-bold ph-camera"></i> Click Departure Selfie + GPS
+          <input type="file" accept="image/*" capture="user" onchange="processNativeSelfie(event, 'checkout')" class="hidden">
+        </label>
+
+        <div id="previewCheckoutBox" class="hidden bg-white p-2.5 rounded-xl border border-rose-200 flex items-center gap-3">
+          <img id="imgCheckoutThumb" class="w-14 h-14 rounded-lg object-cover border" alt="Checkout">
+          <div class="text-[11px] leading-tight overflow-hidden space-y-0.5">
+            <p class="font-bold text-slate-900" id="timeCheckoutText">--:--</p>
+            <p class="font-mono text-slate-500 truncate" id="coordsCheckoutText">0.000, 0.000</p>
+            <span class="text-rose-700 font-semibold text-[10px]">Departure Watermarked ✓</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="closeAttendanceModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+        <button onclick="commitDailyAttendance()" id="btnSaveAttendanceModal" class="px-5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow">Save Attendance Entry</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="watermarkCanvas" class="hidden"></canvas>
+
+  <!-- APPLICATION JAVASCRIPT ENGINE -->
+  <script>
+    const MASTER_DEPOTS = [
+      { code: "3068", userId: "PARLE-3068", name: "Chahna Enterprises", location: "Bangalore 2", state: "Karnataka" },
+      { code: "3065", userId: "PARLE-3065", name: "Nandini Warehousing", location: "Hubli", state: "Karnataka" },
+      { code: "3067", userId: "PARLE-3067", name: "Inderjeet Warehousing", location: "Gulburga", state: "Karnataka" },
+      { code: "3072", userId: "PARLE-3072", name: "Manasa Enterprises", location: "Bijapur", state: "Karnataka" },
+      { code: "3073", userId: "PARLE-3073", name: "Chahna Ent (WFRS/FTS)", location: "Bangalore 1", state: "Karnataka" },
+      { code: "3070", userId: "PARLE-3070", name: "Srinivasa Agencies", location: "Davangere", state: "Karnataka" },
+      { code: "3069", userId: "PARLE-3069", name: "Saanvi Enterprises", location: "Mangalore", state: "Karnataka" },
+      { code: "3071", userId: "PARLE-3071", name: "Shree Logistics", location: "Mysore", state: "Karnataka" },
+      { code: "3054", userId: "PARLE-3054", name: "Kamala Trading Company", location: "Hosur", state: "Tamil Nadu" },
+      { code: "3058", userId: "PARLE-3058", name: "Solaimalai Marketing", location: "Trichy", state: "Tamil Nadu" },
+      { code: "3055", userId: "PARLE-3055", name: "Solaimalai Properties", location: "Madurai", state: "Tamil Nadu" },
+      { code: "3057", userId: "PARLE-3057", name: "Sairam Marketing", location: "Coimbatore-1", state: "Tamil Nadu" },
+      { code: "3150", userId: "PARLE-3150", name: "Alappat Marketing", location: "Coimbatore-2", state: "Tamil Nadu" },
+      { code: "3056", userId: "PARLE-3056", name: "Rocky Agencies", location: "Chennai", state: "Tamil Nadu" },
+      { code: "3155", userId: "PARLE-3155", name: "Pamujula Enterprises LLP", location: "Hyderabad", state: "Telangana" },
+      { code: "3114", userId: "PARLE-3114", name: "Evershine Logistics", location: "Nizamabad", state: "Telangana" },
+      { code: "3059", userId: "PARLE-3059", name: "Sreenidhi Agencies", location: "Guntur", state: "Andhra Pradesh" },
+      { code: "3146", userId: "PARLE-3146", name: "Sree Vinayaka Agencies", location: "Vishakapattanam", state: "Andhra Pradesh" },
+      { code: "3144", userId: "PARLE-3144", name: "Shree Vinayaka Log.", location: "Anantapuram", state: "Andhra Pradesh" },
+      { code: "3064", userId: "PARLE-3064", name: "Allapatt Brothers", location: "Kollam", state: "Kerala" },
+      { code: "3116", userId: "PARLE-3116", name: "Tucarama S Lolienkar", location: "Goa", state: "Goa" }
+    ];
+
+    const DATA_KEY = 'parle_audit_records_master_v21';
+    const AUTHORIZED_DEPOTS_KEY = 'parle_authorized_depots_v21';
+    const ACTIVE_DEPOT_KEY = 'parle_active_depot_code_v21';
+    const ADMIN_SETTINGS_KEY = 'parle_admin_contact_settings_v21';
+    const PIN_KEY = 'parle_lead_reviewer_pin_v21';
+    const CLOUD_URL_KEY = 'parle_cloud_script_url_v21';
+
+    const DEFAULT_CLOUD_URL = 'https://script.google.com/macros/s/AKfycbwT2kbKUL2_PaDkug-lTWiQ8GRymxSJ3HQVI-hYekrUWbblY9ubiRSfMnFKcFdvMcxtxA/exec';
+
+    let auditRecords = JSON.parse(localStorage.getItem(DATA_KEY) || '[]');
+    let authorizedDepotCodes = JSON.parse(localStorage.getItem(AUTHORIZED_DEPOTS_KEY) || '[]');
+    let activeDepotCode = localStorage.getItem(ACTIVE_DEPOT_KEY) || null;
+    let cloudScriptUrl = localStorage.getItem(CLOUD_URL_KEY) || DEFAULT_CLOUD_URL;
+    let isLeadAuthenticated = false;
+
+    let leadReviewerPin = localStorage.getItem(PIN_KEY) || '1234';
+
+    let adminSettings = JSON.parse(localStorage.getItem(ADMIN_SETTINGS_KEY) || JSON.stringify({
+      name: "Lead CA / Central Audit Desk",
+      phone: "+91 98765 43210"
+    }));
+
+    let currentAuditId = null;
+    let currentSlotNumber = 1;
+    let isCurrentSlotBooked = false;
+    let latestGPS = null;
+    let tempAttendanceEntry = { checkin: null, checkout: null };
+    let tempScrapPhotoData = null;
+    let workingPaperAttachments = [];
+    let editingAttendanceDayIndex = -1;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDirectoryGrid();
+      loadAdminSettingsInputs();
+      initCloudSyncUI();
+      document.getElementById('modalDayDate').valueAsDate = new Date();
+      acquireLiveGPS();
+
+      if (authorizedDepotCodes.length > 0) {
+        if (!activeDepotCode || !authorizedDepotCodes.includes(activeDepotCode)) {
+          activeDepotCode = authorizedDepotCodes[0];
+          localStorage.setItem(ACTIVE_DEPOT_KEY, activeDepotCode);
+        }
+        renderAuthorizedDepotsBadges();
+        loadDepotSession(activeDepotCode);
+      } else {
+        activeDepotCode = null;
+        localStorage.removeItem(ACTIVE_DEPOT_KEY);
+        renderAuthorizedDepotsBadges();
+        resetAuditFields();
+      }
+
+      switchToAuditorView();
+      fetchAuditsFromCloud();
+    });
+
+    // LOCATION AUTHORIZATION
+    function handleAuthorizeDepotUserId() {
+      const input = document.getElementById('inputDepotUserId');
+      const enteredId = input.value.trim().toUpperCase();
+
+      if (!enteredId) {
+        alert("Please enter a valid Location User ID (e.g. PARLE-3068 or 3068).");
+        return;
+      }
+
+      const matchedDepot = MASTER_DEPOTS.find(d => 
+        d.userId.toUpperCase() === enteredId || 
+        d.code === enteredId || 
+        `PARLE-${d.code}` === enteredId
+      );
+
+      if (!matchedDepot) {
+        alert(`Unrecognized User ID: "${enteredId}". Please request authorization from the Lead Review Desk.`);
+        return;
+      }
+
+      if (!authorizedDepotCodes.includes(matchedDepot.code)) {
+        authorizedDepotCodes.push(matchedDepot.code);
+        localStorage.setItem(AUTHORIZED_DEPOTS_KEY, JSON.stringify(authorizedDepotCodes));
+      }
+
+      selectActiveDepot(matchedDepot.code);
+      input.value = '';
+    }
+
+    function selectActiveDepot(code) {
+      if (activeDepotCode && isCurrentSlotBooked) {
+        saveAuditProgress(true);
+      }
+
+      activeDepotCode = code;
+      localStorage.setItem(ACTIVE_DEPOT_KEY, activeDepotCode);
+      renderAuthorizedDepotsBadges();
+      loadDepotSession(code);
+    }
+
+    function renderAuthorizedDepotsBadges() {
+      const container = document.getElementById('authorizedDepotsList');
+      container.innerHTML = '';
+
+      if (authorizedDepotCodes.length === 0) {
+        container.innerHTML = `<span class="text-xs text-slate-400 italic">No depots authorized yet. Enter User ID above.</span>`;
+        return;
+      }
+
+      authorizedDepotCodes.forEach(code => {
+        const depot = MASTER_DEPOTS.find(d => d.code === code);
+        const isActive = (code === activeDepotCode);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.onclick = () => selectActiveDepot(code);
+        btn.className = isActive ? 
+          "px-3 py-1.5 rounded-xl font-bold text-xs bg-amber-600 text-white shadow flex items-center gap-1.5 border border-amber-700" :
+          "px-3 py-1.5 rounded-xl font-medium text-xs bg-white text-slate-700 hover:bg-slate-100 flex items-center gap-1.5 border border-slate-200 transition";
+
+        btn.innerHTML = `
+          <i class="ph-bold ${isActive ? 'ph-check-circle text-white' : 'ph-map-pin text-slate-400'}"></i>
+          <span>${code} - ${depot ? depot.location : 'Depot'}</span>
+          <span class="text-[10px] ${isActive ? 'text-amber-200' : 'text-slate-400'} font-mono">(${depot?.userId || code})</span>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    // STRICT 2-AUDITOR ENGINE
+    function loadDepotSession(code) {
+      const depot = MASTER_DEPOTS.find(d => d.code === code);
+      if (!depot) return;
+
+      document.getElementById('chipDepotName').textContent = `${depot.code} - ${depot.name} (${depot.userId})`;
+      document.getElementById('chipDepotState').textContent = `${depot.location}, ${depot.state}`;
+
+      const pinIcon = document.getElementById('chipPinIcon');
+      pinIcon.className = "ph-fill ph-map-pin text-parle-red text-lg";
+
+      const slot1Key = `AUDIT-${code}-SLOT1`;
+      const slot2Key = `AUDIT-${code}-SLOT2`;
+      const recordSlot1 = auditRecords.find(a => a.id === slot1Key);
+      const recordSlot2 = auditRecords.find(a => a.id === slot2Key);
+
+      const currentPhone = (document.getElementById('inputAuditorPhone')?.value || '').replace(/\D/g, '').slice(0, 10);
+
+      if (currentPhone && recordSlot1 && recordSlot1.auditorPhone === currentPhone) {
+        setSessionActiveSlot(recordSlot1, 1);
+        return;
+      }
+      if (currentPhone && recordSlot2 && recordSlot2.auditorPhone === currentPhone) {
+        setSessionActiveSlot(recordSlot2, 2);
+        return;
+      }
+
+      if (!recordSlot1 || !recordSlot1.auditorPhone) {
+        setSessionUnregisteredSlot(code, 1);
+        return;
+      }
+
+      if (!recordSlot2 || !recordSlot2.auditorPhone) {
+        setSessionUnregisteredSlot(code, 2);
+        return;
+      }
+
+      setSessionDepotFull(code, recordSlot1, recordSlot2);
+    }
+
+    function setSessionActiveSlot(auditRecord, slotNumber) {
+      currentAuditId = auditRecord.id;
+      currentSlotNumber = slotNumber;
+      isCurrentSlotBooked = true;
+
+      loadAuditIntoForm(auditRecord.id);
+
+      const slotBadge = document.getElementById('badgeSlotAssigned');
+      slotBadge.textContent = `Claimed: Slot ${slotNumber} (Max 2)`;
+      slotBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 font-mono border border-emerald-300";
+
+      document.getElementById('btnBookSlot').classList.add('hidden');
+      document.getElementById('inputAuditorName').disabled = true;
+      document.getElementById('inputAuditorPhone').disabled = true;
+    }
+
+    function setSessionUnregisteredSlot(code, slotNumber) {
+      currentAuditId = `AUDIT-${code}-SLOT${slotNumber}`;
+      currentSlotNumber = slotNumber;
+      isCurrentSlotBooked = false;
+
+      resetAuditFields();
+
+      const slotBadge = document.getElementById('badgeSlotAssigned');
+      slotBadge.textContent = `Available: Slot ${slotNumber} of 2`;
+      slotBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 font-mono border border-amber-300";
+
+      document.getElementById('btnBookSlot').classList.remove('hidden');
+      document.getElementById('btnBookSlot').innerHTML = `<i class="ph-bold ph-lock-key text-amber-400"></i><span>Register for Slot ${slotNumber}</span>`;
+      document.getElementById('inputAuditorName').disabled = false;
+      document.getElementById('inputAuditorPhone').disabled = false;
+
+      document.getElementById('badgeAuditStatus').textContent = "Status: Unregistered Slot";
+      document.getElementById('badgeAuditStatus').className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800";
+    }
+
+    function setSessionDepotFull(code, s1, s2) {
+      currentAuditId = null;
+      isCurrentSlotBooked = false;
+      resetAuditFields();
+
+      const slotBadge = document.getElementById('badgeSlotAssigned');
+      slotBadge.textContent = "Depot Full (2/2 Slots Claimed)";
+      slotBadge.className = "px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 font-mono border border-rose-300";
+
+      document.getElementById('btnBookSlot').classList.add('hidden');
+      document.getElementById('inputAuditorName').disabled = true;
+      document.getElementById('inputAuditorPhone').disabled = true;
+
+      document.getElementById('badgeAuditStatus').textContent = "Status: Slot Limit Reached (Max 2)";
+      document.getElementById('badgeAuditStatus').className = "px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800";
+
+      document.getElementById('attendanceContainer').innerHTML = `
+        <div class="p-4 bg-rose-50 border border-rose-200 rounded-xl text-center space-y-2">
+          <p class="font-bold text-rose-800 text-xs">Maximum 2 Auditors Already Registered for Depot ${code}</p>
+          <p class="text-[11px] text-slate-600">Slot 1: ${s1.auditorName} (${s1.auditorPhone})<br>Slot 2: ${s2.auditorName} (${s2.auditorPhone})</p>
+          <p class="text-[10px] text-slate-400">If you are one of the two auditors above, enter your exact 10-digit number. Otherwise, request a slot reset from the Lead Desk.</p>
+        </div>
+      `;
+    }
+
+    function bookAuditorSlot() {
+      if (!activeDepotCode) {
+        alert("Please activate a Depot User ID first.");
+        return;
+      }
+
+      const name = document.getElementById('inputAuditorName').value.trim();
+      const phone = (document.getElementById('inputAuditorPhone').value || '').replace(/\D/g, '').slice(0, 10);
+
+      if (!name) {
+        alert("Validation error: Please enter Auditor Full Name.");
+        document.getElementById('inputAuditorName').focus();
+        return;
+      }
+
+      if (!phone || phone.length !== 10) {
+        alert("Validation error: Please enter an exact 10-digit numerical mobile number.");
+        document.getElementById('inputAuditorPhone').focus();
+        return;
+      }
+
+      const slotKey = `AUDIT-${activeDepotCode}-SLOT${currentSlotNumber}`;
+      let audit = auditRecords.find(a => a.id === slotKey);
+
+      if (!audit) {
+        audit = {
+          id: slotKey,
+          depotCode: activeDepotCode,
+          slotNumber: currentSlotNumber,
+          auditorName: name,
+          auditorPhone: phone,
+          scrapInvoiceAvailable: null,
+          scrapInvoicePhoto: null,
+          scrapInvoiceFileName: null,
+          remarks: "",
+          status: "In Progress",
+          attendance: [],
+          workingPapers: [],
+          files: {}
+        };
+        auditRecords.push(audit);
+      } else {
+        audit.auditorName = name;
+        audit.auditorPhone = phone;
+        audit.status = "In Progress";
+      }
+
+      syncStorage();
+      pushAuditToCloud(audit);
+
+      setSessionActiveSlot(audit, currentSlotNumber);
+      alert(`Success! Slot ${currentSlotNumber} claimed for Depot ${activeDepotCode}.\nAttendance and deliverables are now unlocked.`);
+    }
+
+    function renderDirectoryGrid() {
+      const container = document.getElementById('directoryContainer');
+      container.innerHTML = '';
+
+      MASTER_DEPOTS.forEach(d => {
+        const card = document.createElement('div');
+        card.className = "p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <p class="font-bold text-slate-800 text-[11px]">${d.location}</p>
+            <p class="text-[10px] text-slate-500 truncate" title="${d.name}">${d.name}</p>
+          </div>
+          <div class="mt-2 pt-1.5 border-t border-slate-200 flex items-center justify-between">
+            <span class="font-mono font-bold text-amber-700 text-[11px]">${d.userId}</span>
+            <button onclick="copyText('${d.userId}')" title="Copy User ID" class="text-slate-400 hover:text-slate-700">
+              <i class="ph-bold ph-copy text-xs"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function copyText(txt) {
+      navigator.clipboard?.writeText(txt).then(() => alert(`Copied User ID: ${txt}`));
+    }
+
+    // CLOUD SYNC & DRIVE CONFIG
+    function initCloudSyncUI() {
+      const input = document.getElementById('inputCloudScriptUrl');
+      if (!cloudScriptUrl) {
+        cloudScriptUrl = DEFAULT_CLOUD_URL;
+      }
+      localStorage.setItem(CLOUD_URL_KEY, cloudScriptUrl);
+      input.value = cloudScriptUrl;
+      updateCloudStatus(true, "Cloud Connected ✓");
+    }
+
+    function saveCloudScriptUrl() {
+      const url = document.getElementById('inputCloudScriptUrl').value.trim();
+      if (!url) {
+        cloudScriptUrl = DEFAULT_CLOUD_URL;
+        localStorage.setItem(CLOUD_URL_KEY, cloudScriptUrl);
+        document.getElementById('inputCloudScriptUrl').value = DEFAULT_CLOUD_URL;
+        updateCloudStatus(true, "Cloud Connected (Default) ✓");
+        alert("Restored permanent default Google Script URL.");
+        fetchAuditsFromCloud();
+        return;
+      }
+      if (!url.startsWith("https://script.google.com")) {
+        alert("Invalid URL: Must start with https://script.google.com/macros/s/...");
+        return;
+      }
+      cloudScriptUrl = url;
+      localStorage.setItem(CLOUD_URL_KEY, cloudScriptUrl);
+      updateCloudStatus(true, "Cloud Connected ✓");
+      alert("Google Sheets & Drive Sync configured successfully!");
+      fetchAuditsFromCloud();
+    }
+
+    function updateCloudStatus(connected, text) {
+      const dotHeader = document.getElementById('cloudStatusIndicatorDot');
+      const textHeader = document.getElementById('cloudStatusIndicatorText');
+      const labelSync = document.getElementById('labelCloudSyncStatus');
+
+      if (connected) {
+        dotHeader.className = "w-2 h-2 rounded-full bg-emerald-400";
+        textHeader.textContent = "Cloud Live";
+        labelSync.textContent = "Connected & Active ✓";
+        labelSync.className = "font-bold text-xs text-emerald-400";
+      } else {
+        dotHeader.className = "w-2 h-2 rounded-full bg-slate-500";
+        textHeader.textContent = "Cloud Offline";
+        labelSync.textContent = "No Web App URL Configured";
+        labelSync.className = "font-bold text-xs text-amber-300";
+      }
+    }
+
+    async function pushAuditToCloud(auditPayload) {
+      if (!cloudScriptUrl || !cloudScriptUrl.startsWith("https://script.google.com")) {
+        return false;
+      }
+      try {
+        await fetch(cloudScriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(auditPayload)
+        });
+        return true;
+      } catch (e) {
+        console.error("Cloud push error:", e);
+        return false;
+      }
+    }
+
+    async function fetchAuditsFromCloud() {
+      if (!cloudScriptUrl || !cloudScriptUrl.startsWith("https://script.google.com")) {
+        return;
+      }
+
+      const labelSync = document.getElementById('labelCloudSyncStatus');
+      const labelTime = document.getElementById('labelCloudLastSync');
+      if (labelSync) labelSync.textContent = "Fetching live audits...";
+
+      try {
+        const response = await fetch(cloudScriptUrl);
+        const remoteAudits = await response.json();
+
+        if (Array.isArray(remoteAudits)) {
+          const remoteMap = new Map();
+          remoteAudits.forEach(r => remoteMap.set(r.id, r));
+
+          // Retain or reset local items based on remote status
+          auditRecords.forEach((local, idx) => {
+            const remote = remoteMap.get(local.id);
+            if (!remote || !remote.auditorPhone || remote.status === "Revoked" || remote.status === "Scheduled") {
+              auditRecords[idx] = {
+                id: local.id,
+                depotCode: local.depotCode,
+                slotNumber: local.slotNumber || 1,
+                auditorName: "",
+                auditorPhone: "",
+                status: "Scheduled",
+                attendance: [],
+                workingPapers: [],
+                files: {},
+                remarks: "",
+                scrapInvoiceAvailable: null,
+                scrapInvoicePhoto: null
+              };
+            } else {
+              auditRecords[idx] = remote;
+            }
+          });
+
+          // Ensure any missing depots from authorized lists that have no valid slots are removed
+          authorizedDepotCodes = authorizedDepotCodes.filter(code => {
+            return auditRecords.some(a => a.depotCode === code && a.auditorPhone && a.status !== "Scheduled" && a.status !== "Revoked");
+          });
+          localStorage.setItem(AUTHORIZED_DEPOTS_KEY, JSON.stringify(authorizedDepotCodes));
+
+          if (activeDepotCode && !authorizedDepotCodes.includes(activeDepotCode)) {
+            activeDepotCode = authorizedDepotCodes.length > 0 ? authorizedDepotCodes[0] : null;
+            if (activeDepotCode) localStorage.setItem(ACTIVE_DEPOT_KEY, activeDepotCode);
+            else localStorage.removeItem(ACTIVE_DEPOT_KEY);
+          }
+
+          syncStorage();
+          renderAuthorizedDepotsBadges();
+
+          if (isLeadAuthenticated) {
+            renderLeadTable();
+          }
+          if (activeDepotCode) {
+            loadDepotSession(activeDepotCode);
+          } else {
+            resetAuditFields();
+          }
+
+          if (labelSync) labelSync.textContent = `Connected (${remoteAudits.length} Audits Synced)`;
+          if (labelTime) labelTime.textContent = `Last checked: ${new Date().toLocaleTimeString()}`;
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        if (labelSync) labelSync.textContent = "Connected & Ready";
+      }
+    }
+
+    function openAppsScriptModal() {
+      document.getElementById('appsScriptModal').classList.remove('hidden');
+    }
+
+    function closeAppsScriptModal() {
+      document.getElementById('appsScriptModal').classList.add('hidden');
+    }
+
+    function copyAppsScriptCode() {
+      const code = document.getElementById('appsScriptCodeBlock').value;
+      const copyBtnText = document.getElementById('copyBtnText');
+
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      textarea.style.position = 'fixed';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        copyBtnText.textContent = "Copied!";
+        setTimeout(() => copyBtnText.textContent = "Copy Code", 2500);
+      } catch (e) {
+        alert("Please select code manually and copy.");
+      }
+      document.body.removeChild(textarea);
+    }
+
+    // DELIVERABLE READERS & SAVE/SUBMIT
+    function handleFilePicked(type) {
+      if (!isCurrentSlotBooked) {
+        alert("Please register your Name and 10-digit number above to claim a slot before attaching files.");
+        return;
+      }
+
+      let audit = auditRecords.find(a => a.id === currentAuditId);
+      if (!audit) return;
+      if (!audit.files) audit.files = {};
+
+      if (type === 'zsd') {
+        const file = document.getElementById('fileZsdDump').files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            audit.files.zsdDump = file.name;
+            audit.files.zsdDataBase64 = e.target.result;
+            document.getElementById('statusZsd').textContent = `Attached: ${file.name} ✓`;
+            saveAuditProgress(true);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+
+      if (type === 'excel') {
+        const file = document.getElementById('fileReconExcel').files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            audit.files.reconciledExcel = file.name;
+            audit.files.excelDataBase64 = e.target.result;
+            document.getElementById('statusExcel').textContent = `Attached: ${file.name} ✓`;
+            saveAuditProgress(true);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
+
+    function handleMultipleWorkingPapers(event) {
+      if (!isCurrentSlotBooked) {
+        alert("Please claim an auditor slot first.");
+        return;
+      }
+      const files = Array.from(event.target.files);
+      if (!files || files.length === 0) return;
+
+      let readCounter = 0;
+      files.forEach(f => {
+        if (!workingPaperAttachments.some(existing => existing.name === f.name)) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            workingPaperAttachments.push({
+              name: f.name,
+              size: formatBytes(f.size),
+              uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              base64: e.target.result
+            });
+            readCounter++;
+            if (readCounter === files.length) {
+              renderWorkingPaperList();
+              saveAuditProgress(true);
+            }
+          };
+          reader.readAsDataURL(f);
+        }
+      });
+      event.target.value = '';
+    }
+
+    function removeWorkingPaper(index) {
+      workingPaperAttachments.splice(index, 1);
+      renderWorkingPaperList();
+      saveAuditProgress(true);
+    }
+
+    function renderWorkingPaperList() {
+      const container = document.getElementById('wpFileListContainer');
+      const countBadge = document.getElementById('wpBadgeCount');
+      countBadge.textContent = `${workingPaperAttachments.length} Attached`;
+
+      if (workingPaperAttachments.length === 0) {
+        container.innerHTML = `<p class="text-[10px] text-slate-400 italic">No working papers attached yet</p>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      workingPaperAttachments.forEach((doc, idx) => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 text-[11px]";
+        item.innerHTML = `
+          <div class="flex items-center gap-2 overflow-hidden pr-2">
+            <i class="ph-bold ph-file-pdf text-rose-600 text-sm flex-shrink-0"></i>
+            <div class="truncate">
+              <p class="font-bold text-slate-800 truncate" title="${doc.name}">${doc.name}</p>
+              <p class="text-[10px] text-slate-400 font-mono">${doc.size}</p>
+            </div>
+          </div>
+          <button onclick="removeWorkingPaper(${idx})" class="text-slate-400 hover:text-rose-600 p-1 flex-shrink-0">
+            <i class="ph-bold ph-x-circle text-base"></i>
+          </button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function saveAuditProgress(silent = false) {
+      if (!activeDepotCode || !isCurrentSlotBooked) {
+        if (!silent) alert("Please activate a depot and claim an auditor slot first.");
+        return;
+      }
+
+      const scrapRadios = document.getElementsByName('scrapInvoiceAvailable');
+      let scrapValue = null;
+      if (scrapRadios[0]?.checked) scrapValue = "Yes";
+      else if (scrapRadios[1]?.checked) scrapValue = "No";
+
+      let audit = auditRecords.find(a => a.id === currentAuditId);
+      if (!audit) return;
+
+      audit.scrapInvoiceAvailable = scrapValue;
+      audit.scrapInvoicePhoto = scrapValue === 'Yes' ? tempScrapPhotoData : null;
+      audit.scrapInvoiceFileName = scrapValue === 'Yes' ? document.getElementById('scrapFileName').textContent : null;
+      audit.remarks = document.getElementById('inputRemarks').value;
+      audit.workingPapers = [...workingPaperAttachments];
+
+      syncStorage();
+      pushAuditToCloud(audit);
+      
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('mobileStatusIndicator').textContent = `Draft saved at ${timeStr}`;
+
+      if (!silent) {
+        alert(`Draft saved for Depot ${activeDepotCode} (Slot ${currentSlotNumber})`);
+      }
+    }
+
+    function submitAuditFinal() {
+      if (!isCurrentSlotBooked) {
+        alert("Please claim an auditor slot first.");
+        return;
+      }
+
+      saveAuditProgress(true);
+      const audit = auditRecords.find(a => a.id === currentAuditId);
+      if (!audit) return;
+
+      if (!audit.attendance || audit.attendance.length === 0) {
+        alert("Validation error: At least 1 day of attendance selfie must be logged.");
+        return;
+      }
+      if (!audit.workingPapers || audit.workingPapers.length === 0) {
+        alert("Validation error: Please attach at least one Scanned Working Paper PDF.");
+        return;
+      }
+      if (!audit.scrapInvoiceAvailable) {
+        alert("Validation error: Please indicate if Scrap Invoice is Available (Yes / No).");
+        return;
+      }
+      if (audit.scrapInvoiceAvailable === 'Yes' && !audit.scrapInvoicePhoto) {
+        alert("Validation error: Scrap Invoice is marked 'Yes'. Please upload or click the scrap invoice photo.");
+        return;
+      }
+
+      audit.status = "Completed";
+      syncStorage();
+      
+      const btn = document.getElementById('btnCompleteFinal');
+      btn.innerHTML = `<i class="ph-bold ph-arrows-clockwise animate-spin text-base"></i> Syncing to Drive & Cloud...`;
+      btn.disabled = true;
+
+      pushAuditToCloud(audit).then(() => {
+        btn.innerHTML = `<i class="ph-bold ph-paper-plane-tilt text-base"></i> Complete & Sync to Cloud & Drive`;
+        btn.disabled = false;
+        document.getElementById('badgeAuditStatus').textContent = "Status: Completed";
+        document.getElementById('badgeAuditStatus').className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+        alert(`Parle Stock Audit for Depot ${activeDepotCode} (Slot ${currentSlotNumber}) completed! Deliverables, count papers, and selfies are stored in Google Drive.`);
+      });
+    }
+
+    function loadAuditIntoForm(auditId) {
+      const audit = auditRecords.find(a => a.id === auditId);
+      if (!audit) return;
+
+      currentAuditId = audit.id;
+      document.getElementById('inputAuditorName').value = audit.auditorName || '';
+      document.getElementById('inputAuditorPhone').value = (audit.auditorPhone || '').replace(/\D/g, '').slice(0, 10);
+      document.getElementById('inputRemarks').value = audit.remarks || '';
+
+      workingPaperAttachments = audit.workingPapers ? [...audit.workingPapers] : [];
+      renderWorkingPaperList();
+
+      const scrapRadios = document.getElementsByName('scrapInvoiceAvailable');
+      if (audit.scrapInvoiceAvailable === 'Yes') {
+        scrapRadios[0].checked = true;
+        handleScrapInvoiceToggle(true);
+        if (audit.scrapInvoicePhoto) {
+          tempScrapPhotoData = audit.scrapInvoicePhoto;
+          document.getElementById('imgScrapInvoiceThumb').src = audit.scrapInvoicePhoto;
+          document.getElementById('scrapPhotoPreviewBox').classList.remove('hidden');
+          document.getElementById('scrapFileName').textContent = audit.scrapInvoiceFileName || "Scrap_Invoice.jpg";
+          document.getElementById('labelScrapPhotoStatus').textContent = "Photo Attached ✓";
+          document.getElementById('labelScrapPhotoStatus').className = "text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded";
+        }
+      } else if (audit.scrapInvoiceAvailable === 'No') {
+        scrapRadios[1].checked = true;
+        handleScrapInvoiceToggle(false);
+      } else {
+        resetScrapInvoiceUI();
+      }
+
+      document.getElementById('statusZsd').textContent = audit.files?.zsdDump ? `Attached: ${audit.files.zsdDump} ✓` : 'Not attached';
+      document.getElementById('statusExcel').textContent = audit.files?.reconciledExcel ? `Attached: ${audit.files.reconciledExcel} ✓` : 'Not attached';
+
+      renderAttendanceList(audit.attendance || []);
+      document.getElementById('badgeAuditStatus').textContent = `Status: ${audit.status}`;
+      document.getElementById('badgeAuditStatus').className = audit.status === 'Completed' ? 
+        "px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800" : 
+        "px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800";
+    }
+
+    function resetAuditFields() {
+      document.getElementById('inputAuditorName').value = '';
+      document.getElementById('inputAuditorPhone').value = '';
+      document.getElementById('inputRemarks').value = '';
+      document.getElementById('statusZsd').textContent = 'Not attached';
+      document.getElementById('statusExcel').textContent = 'Not attached';
+      workingPaperAttachments = [];
+      renderWorkingPaperList();
+      resetScrapInvoiceUI();
+      renderAttendanceList([]);
+      if (!activeDepotCode) {
+        document.getElementById('badgeAuditStatus').textContent = "Status: No Depot Selected";
+        document.getElementById('badgeAuditStatus').className = "px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500";
+        document.getElementById('chipDepotName').textContent = "No active depot selected";
+        document.getElementById('chipDepotState').textContent = "Enter a Depot User ID above to begin";
+        document.getElementById('chipPinIcon').className = "ph-fill ph-map-pin text-slate-400 text-lg";
+        document.getElementById('badgeSlotAssigned').textContent = "Unregistered";
+        document.getElementById('badgeSlotAssigned').className = "px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 font-mono";
+      }
+    }
+
+    function syncStorage() {
+      localStorage.setItem(DATA_KEY, JSON.stringify(auditRecords));
+    }
+
+    // ATTENDANCE REGISTRATION - ACCURATE AUDITOR GPS
+    function acquireLiveGPS() {
+      const statusText = document.getElementById('gpsStatusText');
+      const indicator = document.getElementById('gpsIndicator');
+
+      if (!statusText || !indicator) return;
+
+      statusText.textContent = "Acquiring accurate live GPS from device...";
+      indicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0";
+
+      if (!navigator.geolocation) {
+        statusText.textContent = "Location services unsupported on this device/browser.";
+        indicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500 flex-shrink-0";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          latestGPS = {
+            lat: pos.coords.latitude.toFixed(6),
+            lng: pos.coords.longitude.toFixed(6),
+            accuracy: Math.round(pos.coords.accuracy || 10)
+          };
+          statusText.textContent = `GPS Locked: ${latestGPS.lat}, ${latestGPS.lng} (±${latestGPS.accuracy}m)`;
+          indicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0";
+        },
+        err => {
+          let errorMsg = "Unable to get device location.";
+          if (err.code === 1) errorMsg = "Location permission denied. Please enable GPS permissions in browser settings.";
+          else if (err.code === 2) errorMsg = "Position unavailable. Please ensure device Location/GPS is ON.";
+          else if (err.code === 3) errorMsg = "GPS request timed out. Please tap Retry.";
+          
+          statusText.textContent = errorMsg;
+          indicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500 flex-shrink-0";
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    }
+
+    function openAttendanceModal(targetDayIndex = -1) {
+      if (!isCurrentSlotBooked) {
+        alert("Please register your Name and 10-digit number above to claim a slot before logging attendance.");
+        return;
+      }
+
+      const depot = MASTER_DEPOTS.find(d => d.code === activeDepotCode);
+      document.getElementById('modalDepotSubtitle').textContent = `${depot.code} - ${depot.name} (${depot.location}) • Slot ${currentSlotNumber}`;
+
+      const audit = auditRecords.find(a => a.id === currentAuditId);
+      const attendance = audit?.attendance || [];
+
+      const todayFormatted = new Date().toLocaleDateString('en-IN');
+      if (targetDayIndex === -1 && attendance.length > 0) {
+        const todayOpenIdx = attendance.findIndex(item => item.date === todayFormatted && (!item.checkout || !item.checkout.photo));
+        if (todayOpenIdx !== -1) {
+          targetDayIndex = todayOpenIdx;
+        }
+      }
+
+      editingAttendanceDayIndex = targetDayIndex;
+      acquireLiveGPS();
+
+      if (targetDayIndex >= 0 && attendance[targetDayIndex]) {
+        const existingDay = attendance[targetDayIndex];
+        tempAttendanceEntry = {
+          checkin: Object.assign({}, existingDay.checkin),
+          checkout: existingDay.checkout && existingDay.checkout.photo ? Object.assign({}, existingDay.checkout) : null
+        };
+
+        document.getElementById('modalDayNumber').value = existingDay.day;
+        document.getElementById('modalDayNumber').disabled = true;
+
+        if (existingDay.rawDate) {
+          document.getElementById('modalDayDate').value = existingDay.rawDate;
+        } else {
+          document.getElementById('modalDayDate').valueAsDate = new Date();
+        }
+        document.getElementById('modalDayDate').disabled = true;
+
+        document.getElementById('statusCheckinDone').textContent = `Done (${existingDay.checkin.time})`;
+        document.getElementById('previewCheckinBox').classList.remove('hidden');
+        document.getElementById('imgCheckinThumb').src = existingDay.checkin.photo;
+        document.getElementById('timeCheckinText').textContent = `Arrival: ${existingDay.checkin.time}`;
+        document.getElementById('coordsCheckinText').textContent = `${existingDay.checkin.lat}, ${existingDay.checkin.lng}`;
+        document.getElementById('btnCheckinCaptureLabel').classList.add('hidden');
+
+        if (existingDay.checkout && existingDay.checkout.photo) {
+          document.getElementById('statusCheckoutDone').textContent = `Done (${existingDay.checkout.time})`;
+          document.getElementById('previewCheckoutBox').classList.remove('hidden');
+          document.getElementById('imgCheckoutThumb').src = existingDay.checkout.photo;
+          document.getElementById('timeCheckoutText').textContent = `Departure: ${existingDay.checkout.time}`;
+          document.getElementById('coordsCheckoutText').textContent = `${existingDay.checkout.lat}, ${existingDay.checkout.lng}`;
+        } else {
+          document.getElementById('statusCheckoutDone').textContent = "Ready for Departure Selfie";
+          document.getElementById('previewCheckoutBox').classList.add('hidden');
+          document.getElementById('btnCheckoutCaptureLabel').classList.remove('hidden');
+        }
+
+        document.getElementById('btnSaveAttendanceModal').textContent = "Update Departure Check-Out";
+      } else {
+        editingAttendanceDayIndex = -1;
+        document.getElementById('modalDayNumber').disabled = false;
+        document.getElementById('modalDayDate').disabled = false;
+        document.getElementById('modalDayDate').valueAsDate = new Date();
+        document.getElementById('modalDayNumber').value = attendance.length + 1;
+
+        tempAttendanceEntry = { checkin: null, checkout: null };
+        document.getElementById('statusCheckinDone').textContent = "Pending";
+        document.getElementById('statusCheckoutDone').textContent = "Pending Arrival Check-In";
+        document.getElementById('previewCheckinBox').classList.add('hidden');
+        document.getElementById('previewCheckoutBox').classList.add('hidden');
+        document.getElementById('btnCheckinCaptureLabel').classList.remove('hidden');
+        document.getElementById('btnCheckoutCaptureLabel').classList.remove('hidden');
+        document.getElementById('btnSaveAttendanceModal').textContent = "Save Day's Attendance";
+      }
+
+      document.getElementById('attendanceModal').classList.remove('hidden');
+    }
+
+    function closeAttendanceModal() {
+      document.getElementById('attendanceModal').classList.add('hidden');
+    }
+
+    function processNativeSelfie(event, type) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (!latestGPS || !latestGPS.lat || !latestGPS.lng) {
+        alert("Accurate GPS location not locked yet. Please tap 'Retry' on the GPS indicator and allow your phone to locate you before taking the photo.");
+        event.target.value = '';
+        return;
+      }
+
+      const depotCode = activeDepotCode;
+      const auditorName = document.getElementById('inputAuditorName').value || 'Auditor';
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = now.toLocaleDateString('en-IN');
+      const lat = latestGPS.lat;
+      const lng = latestGPS.lng;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('watermarkCanvas');
+          const ctx = canvas.getContext('2d');
+
+          canvas.width = 800;
+          canvas.height = 1066;
+
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+          ctx.fillRect(0, canvas.height - 140, canvas.width, 140);
+
+          ctx.fillStyle = "#f59e0b";
+          ctx.font = "bold 26px sans-serif";
+          ctx.fillText(`PARLE STOCK AUDIT • ${type.toUpperCase()} SELFIE`, 24, canvas.height - 95);
+
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "20px sans-serif";
+          ctx.fillText(`Auditor GPS: ${lat}, ${lng} (±${latestGPS.accuracy}m)  |  ${dateStr} ${timeStr}`, 24, canvas.height - 60);
+          ctx.fillText(`Depot: ${depotCode} (Slot ${currentSlotNumber})  |  Auditor: ${auditorName}`, 24, canvas.height - 25);
+
+          const watermarkedPhotoData = canvas.toDataURL('image/jpeg', 0.85);
+
+          tempAttendanceEntry[type] = {
+            time: timeStr,
+            date: dateStr,
+            lat: lat,
+            lng: lng,
+            photo: watermarkedPhotoData
+          };
+
+          if (type === 'checkin') {
+            document.getElementById('statusCheckinDone').textContent = `Done (${timeStr})`;
+            document.getElementById('previewCheckinBox').classList.remove('hidden');
+            document.getElementById('imgCheckinThumb').src = watermarkedPhotoData;
+            document.getElementById('timeCheckinText').textContent = `Arrival: ${timeStr}`;
+            document.getElementById('coordsCheckinText').textContent = `${lat}, ${lng}`;
+            document.getElementById('statusCheckoutDone').textContent = "Ready for Departure Selfie";
+          } else {
+            document.getElementById('statusCheckoutDone').textContent = `Done (${timeStr})`;
+            document.getElementById('previewCheckoutBox').classList.remove('hidden');
+            document.getElementById('imgCheckoutThumb').src = watermarkedPhotoData;
+            document.getElementById('timeCheckoutText').textContent = `Departure: ${timeStr}`;
+            document.getElementById('coordsCheckoutText').textContent = `${lat}, ${lng}`;
+          }
+          saveAuditProgress(true);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function commitDailyAttendance() {
+      if (!tempAttendanceEntry.checkin) {
+        alert("Arrival Check-In selfie is required.");
+        return;
+      }
+
+      saveAuditProgress(true);
+
+      const audit = auditRecords.find(a => a.id === currentAuditId);
+      if (audit) {
+        if (!audit.attendance) audit.attendance = [];
+
+        if (editingAttendanceDayIndex >= 0 && audit.attendance[editingAttendanceDayIndex]) {
+          audit.attendance[editingAttendanceDayIndex].checkout = tempAttendanceEntry.checkout || audit.attendance[editingAttendanceDayIndex].checkout;
+          alert("Departure Check-Out saved successfully!");
+        } else {
+          const dayNumber = parseInt(document.getElementById('modalDayNumber').value) || (audit.attendance.length + 1);
+          const rawDate = document.getElementById('modalDayDate').value;
+          audit.attendance.push({
+            day: dayNumber,
+            date: tempAttendanceEntry.checkin.date,
+            rawDate: rawDate,
+            checkin: tempAttendanceEntry.checkin,
+            checkout: tempAttendanceEntry.checkout || null
+          });
+          alert("Day's Arrival Check-In logged! When leaving, tap 'Complete Check-Out' to log departure.");
+        }
+
+        syncStorage();
+        pushAuditToCloud(audit);
+        renderAttendanceList(audit.attendance);
+      }
+
+      closeAttendanceModal();
+    }
+
+    function renderAttendanceList(logs) {
+      const container = document.getElementById('attendanceContainer');
+      if (!isCurrentSlotBooked) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            Please register your name and 10-digit mobile number above to unlock attendance.
+          </div>
+        `;
+        return;
+      }
+
+      if (!logs || logs.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            No attendance entries logged yet. Tap <strong>"Log Attendance"</strong> to check in.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = '';
+      logs.forEach((log, idx) => {
+        const mapUrl = `https://www.google.com/maps?q=${log.checkin.lat},${log.checkin.lng}`;
+        const hasCheckout = log.checkout && log.checkout.photo;
+        const card = document.createElement('div');
+        card.className = "p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3";
+
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs">
+              Day ${log.day}
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <p class="text-xs font-bold text-slate-900">${log.date}</p>
+                ${hasCheckout ? 
+                  '<span class="text-[9px] font-bold uppercase px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded">Full Day Complete ✓</span>' : 
+                  '<span class="text-[9px] font-bold uppercase px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded animate-pulse">Checked In (Departure Pending)</span>'}
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5">
+                Arrival: <span class="font-bold text-emerald-700">${log.checkin.time}</span> | 
+                Departure: <span class="font-bold ${hasCheckout ? 'text-rose-700' : 'text-slate-400 italic'}">${hasCheckout ? log.checkout.time : 'Pending'}</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            ${!hasCheckout ? `
+              <button onclick="openAttendanceModal(${idx})" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 shadow touch-btn">
+                <i class="ph-bold ph-sign-out"></i> Complete Check-Out
+              </button>
+            ` : ''}
+            <a href="${mapUrl}" target="_blank" class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[11px] flex items-center gap-1">
+              <i class="ph-bold ph-map-pin"></i> Auditor GPS Map
+            </a>
+            <button onclick="removeAttendanceEntry(${idx})" title="Delete Entry" class="p-1.5 text-slate-400 hover:text-rose-600 rounded">
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function removeAttendanceEntry(index) {
+      if (!confirm("Are you sure you want to remove this attendance record?")) return;
+      const audit = auditRecords.find(a => a.id === currentAuditId);
+      if (audit && audit.attendance) {
+        audit.attendance.splice(index, 1);
+        syncStorage();
+        pushAuditToCloud(audit);
+        renderAttendanceList(audit.attendance);
+      }
+    }
+
+    // SCRAP INVOICE HELPERS
+    function handleScrapInvoiceToggle(isYes) {
+      if (!isCurrentSlotBooked) {
+        alert("Please claim an auditor slot first.");
+        return;
+      }
+      const section = document.getElementById('scrapPhotoSection');
+      const badge = document.getElementById('badgeScrapStatus');
+      if (isYes) {
+        section.classList.remove('hidden');
+        badge.textContent = "Yes - Photo Required";
+        badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800";
+      } else {
+        section.classList.add('hidden');
+        badge.textContent = "No - Not Applicable";
+        badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-slate-200 text-slate-600";
+        tempScrapPhotoData = null;
+        document.getElementById('scrapPhotoPreviewBox').classList.add('hidden');
+        document.getElementById('scrapFileName').textContent = "No photo chosen";
+        document.getElementById('labelScrapPhotoStatus').textContent = "Ignored";
+        document.getElementById('labelScrapPhotoStatus').className = "text-[10px] font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded";
+      }
+      saveAuditProgress(true);
+    }
+
+    function handleScrapPhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      document.getElementById('scrapFileName').textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        tempScrapPhotoData = e.target.result;
+        document.getElementById('imgScrapInvoiceThumb').src = tempScrapPhotoData;
+        document.getElementById('scrapInvoiceTimestamp').textContent = new Date().toLocaleString();
+        document.getElementById('scrapPhotoPreviewBox').classList.remove('hidden');
+
+        const labelStatus = document.getElementById('labelScrapPhotoStatus');
+        labelStatus.textContent = "Photo Attached ✓";
+        labelStatus.className = "text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded";
+        saveAuditProgress(true);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetScrapInvoiceUI() {
+      const radios = document.getElementsByName('scrapInvoiceAvailable');
+      radios.forEach(r => r.checked = false);
+      document.getElementById('scrapPhotoSection').classList.add('hidden');
+      document.getElementById('scrapPhotoPreviewBox').classList.add('hidden');
+      document.getElementById('badgeScrapStatus').textContent = "Pending Selection";
+      document.getElementById('badgeScrapStatus').className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-slate-200 text-slate-600";
+      document.getElementById('scrapFileName').textContent = "No photo chosen";
+      tempScrapPhotoData = null;
+    }
+
+    function formatBytes(bytes, decimals = 1) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // PIN AUTH & LEAD DESK
+    function requestLeadDeskAccess() {
+      document.getElementById('leadPinInput').value = '';
+      document.getElementById('pinErrorMessage').classList.add('hidden');
+      document.getElementById('passwordModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('leadPinInput').focus(), 150);
+    }
+
+    function closePasswordModal() {
+      document.getElementById('passwordModal').classList.add('hidden');
+    }
+
+    function verifyLeadPin() {
+      const pin = document.getElementById('leadPinInput').value.trim();
+      if (pin === leadReviewerPin) {
+        isLeadAuthenticated = true;
+        closePasswordModal();
+        showLeadDesk();
+      } else {
+        document.getElementById('pinErrorMessage').classList.remove('hidden');
+      }
+    }
+
+    document.getElementById('leadPinInput')?.addEventListener('keyup', e => {
+      if (e.key === 'Enter') verifyLeadPin();
+    });
+
+    function showLeadDesk() {
+      document.getElementById('viewAuditor').classList.add('hidden');
+      document.getElementById('viewLead').classList.remove('hidden');
+      document.getElementById('stickySaveBar').classList.add('hidden');
+      document.getElementById('navLeadBtn').className = "px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-amber-600 text-white shadow";
+      document.getElementById('navAuditorBtn').className = "px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white";
+      document.getElementById('roleIndicatorBadge').textContent = "Lead Desk (Universal Rights)";
+      renderLeadTable();
+      loadAdminSettingsInputs();
+      initCloudSyncUI();
+
+      if (cloudScriptUrl) {
+        fetchAuditsFromCloud();
+      }
+    }
+
+    function switchToAuditorView() {
+      document.getElementById('viewLead').classList.add('hidden');
+      document.getElementById('viewAuditor').classList.remove('hidden');
+      document.getElementById('stickySaveBar').classList.remove('hidden');
+      document.getElementById('navAuditorBtn').className = "px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-amber-600 text-white shadow";
+      document.getElementById('navLeadBtn').className = "px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white";
+      document.getElementById('roleIndicatorBadge').textContent = "Auditor Portal";
+    }
+
+    function lockLeadDesk() {
+      isLeadAuthenticated = false;
+      switchToAuditorView();
+      alert("Lead Review Desk locked. PIN is required to access again.");
+    }
+
+    function updateReviewerPin() {
+      const currentInput = document.getElementById('inputCurrentPin').value.trim();
+      const newInput = document.getElementById('inputNewPin').value.trim();
+      const confirmInput = document.getElementById('inputConfirmPin').value.trim();
+
+      if (currentInput !== leadReviewerPin) {
+        alert("Verification failed: The Current PIN entered is incorrect.");
+        return;
+      }
+      if (newInput.length < 4 || newInput.length > 6 || !/^\d+$/.test(newInput)) {
+        alert("Invalid PIN: New PIN must be between 4 and 6 digits (numbers only).");
+        return;
+      }
+      if (newInput !== confirmInput) {
+        alert("Mismatch: New PIN and Confirmation PIN do not match.");
+        return;
+      }
+
+      leadReviewerPin = newInput;
+      localStorage.setItem(PIN_KEY, leadReviewerPin);
+
+      document.getElementById('inputCurrentPin').value = '';
+      document.getElementById('inputNewPin').value = '';
+      document.getElementById('inputConfirmPin').value = '';
+
+      alert(`Success! Lead Reviewer PIN has been changed to: ${leadReviewerPin}`);
+    }
+
+    function resetPinToDefault() {
+      if (!confirm("Reset Lead Reviewer PIN to default (1234)?")) return;
+      leadReviewerPin = '1234';
+      localStorage.setItem(PIN_KEY, '1234');
+      document.getElementById('inputCurrentPin').value = '';
+      document.getElementById('inputNewPin').value = '';
+      document.getElementById('inputConfirmPin').value = '';
+      alert("PIN has been reset to default: 1234");
+    }
+
+    // REVOKE SLOT ENGINE (CLEARS LOCAL CACHE + SIGNALS APPS SCRIPT TO TRASH DRIVE FOLDER & SHEET ROW)
+    function leadRevokeSpecificSlot(auditId, depotCode, slotNum, auditorName) {
+      if (!confirm(`Revoke Slot ${slotNum} for Depot ${depotCode}?\n\nAuditor: "${auditorName || 'Auditor'}"\n\nThis will permanently delete the folder in Google Drive, remove the row from Google Sheets, and clear the depot from active authorized locations.`)) {
+        return;
+      }
+
+      const resetRecord = {
+        id: auditId,
+        depotCode: depotCode,
+        slotNumber: slotNum,
+        auditorName: "",
+        auditorPhone: "",
+        status: "Revoked",
+        attendance: [],
+        workingPapers: [],
+        files: {},
+        remarks: "",
+        scrapInvoiceAvailable: null,
+        scrapInvoicePhoto: null
+      };
+
+      const idx = auditRecords.findIndex(a => a.id === auditId);
+      if (idx >= 0) {
+        auditRecords[idx] = resetRecord;
+      }
+
+      // Check if this depot has any remaining active slots
+      const otherSlotNum = slotNum === 1 ? 2 : 1;
+      const otherSlotKey = `AUDIT-${depotCode}-SLOT${otherSlotNum}`;
+      const otherAudit = auditRecords.find(a => a.id === otherSlotKey);
+
+      const hasOtherAuditor = otherAudit && otherAudit.auditorPhone && otherAudit.status !== "Scheduled" && otherAudit.status !== "Revoked";
+
+      // If no other auditor is assigned to this depot, remove it from active authorized depots
+      if (!hasOtherAuditor) {
+        authorizedDepotCodes = authorizedDepotCodes.filter(c => c !== depotCode);
+        localStorage.setItem(AUTHORIZED_DEPOTS_KEY, JSON.stringify(authorizedDepotCodes));
+
+        if (activeDepotCode === depotCode) {
+          activeDepotCode = authorizedDepotCodes.length > 0 ? authorizedDepotCodes[0] : null;
+          if (activeDepotCode) {
+            localStorage.setItem(ACTIVE_DEPOT_KEY, activeDepotCode);
+          } else {
+            localStorage.removeItem(ACTIVE_DEPOT_KEY);
+          }
+        }
+      }
+
+      syncStorage();
+      renderAuthorizedDepotsBadges();
+
+      // Post status="Revoked" to delete the folder in Google Drive & delete row in Google Sheet
+      pushAuditToCloud(resetRecord);
+
+      if (activeDepotCode) {
+        loadDepotSession(activeDepotCode);
+      } else {
+        resetAuditFields();
+      }
+
+      renderLeadTable();
+      alert(`Slot ${slotNum} for Depot ${depotCode} has been revoked.\nThe folder in Google Drive and row in Google Sheets have been deleted, and the authorized depot badge has been updated.`);
+    }
+
+    function openViewAuditModal(auditId) {
+      const audit = auditRecords.find(a => a.id === auditId);
+      if (!audit) return;
+
+      const depot = MASTER_DEPOTS.find(d => d.code === audit.depotCode);
+      document.getElementById('viewModalDepotHeader').textContent = `${depot ? depot.code + ' - ' + depot.name : audit.depotCode} (${depot ? depot.location : ''}) • Slot ${audit.slotNumber || 1}`;
+      document.getElementById('viewModalAuditorName').textContent = audit.auditorName || '—';
+      document.getElementById('viewModalAuditorPhone').textContent = audit.auditorPhone || '—';
+
+      const statusBadge = document.getElementById('viewModalStatus');
+      statusBadge.textContent = audit.status || 'In Progress';
+      statusBadge.className = audit.status === 'Completed' ? 'font-bold px-2 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800' : 'font-bold px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800';
+
+      document.getElementById('viewModalScrapStatus').textContent = audit.scrapInvoiceAvailable === 'Yes' ? 'Yes (Photo Attached)' : (audit.scrapInvoiceAvailable === 'No' ? 'No Scrap' : 'Unanswered');
+      document.getElementById('viewModalRemarks').textContent = audit.remarks || 'None recorded.';
+
+      const attContainer = document.getElementById('viewModalAttendanceList');
+      attContainer.innerHTML = '';
+      if (!audit.attendance || audit.attendance.length === 0) {
+        attContainer.innerHTML = '<p class="text-slate-400 italic">No attendance records logged.</p>';
+      } else {
+        audit.attendance.forEach(att => {
+          const item = document.createElement('div');
+          item.className = "p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between";
+          if (typeof att === 'string') {
+            item.innerHTML = `<span class="font-medium text-slate-800">${att}</span>`;
+          } else {
+            item.innerHTML = `
+              <div>
+                <span class="font-bold text-slate-800">Day ${att.day}: ${att.date}</span>
+                <p class="text-[11px] text-slate-500">Arrival: <strong class="text-emerald-700">${att.checkin?.time || '—'}</strong> | Departure: <strong class="text-rose-700">${att.checkout?.time || 'Pending'}</strong></p>
+              </div>
+              <a href="https://www.google.com/maps?q=${att.checkin?.lat},${att.checkin?.lng}" target="_blank" class="px-2 py-1 bg-indigo-50 text-indigo-700 font-bold rounded text-[10px]">Verify Auditor GPS</a>
+            `;
+          }
+          attContainer.appendChild(item);
+        });
+      }
+
+      const filesContainer = document.getElementById('viewModalFilesList');
+      filesContainer.innerHTML = '';
+      const wpCount = audit.workingPapers?.length || 0;
+      filesContainer.innerHTML += `<div class="p-2 bg-slate-50 rounded-lg border border-slate-200"><span class="font-bold text-slate-800">Working Papers:</span> ${wpCount > 0 ? wpCount + ' PDF(s) attached' : 'None'}</div>`;
+      filesContainer.innerHTML += `<div class="p-2 bg-slate-50 rounded-lg border border-slate-200"><span class="font-bold text-slate-800">Raw ZSD Dump:</span> ${audit.files?.zsdDump ? audit.files.zsdDump + ' ✓' : 'Not attached'}</div>`;
+      filesContainer.innerHTML += `<div class="p-2 bg-slate-50 rounded-lg border border-slate-200"><span class="font-bold text-slate-800">Reconciled Excel:</span> ${audit.files?.reconciledExcel ? audit.files.reconciledExcel + ' ✓' : 'Not attached'}</div>`;
+
+      document.getElementById('viewAuditModal').classList.remove('hidden');
+    }
+
+    function closeViewAuditModal() {
+      document.getElementById('viewAuditModal').classList.add('hidden');
+    }
+
+    function renderLeadTable() {
+      const tbody = document.getElementById('leadTableBody');
+      const search = (document.getElementById('leadSearch')?.value || '').toLowerCase();
+
+      let inProgress = 0;
+      let completed = 0;
+      let totalManDays = 0;
+
+      tbody.innerHTML = '';
+
+      MASTER_DEPOTS.forEach(d => {
+        [1, 2].forEach(slotNum => {
+          const slotKey = `AUDIT-${d.code}-SLOT${slotNum}`;
+          const audit = auditRecords.find(a => a.id === slotKey) || {
+            id: slotKey,
+            depotCode: d.code,
+            slotNumber: slotNum,
+            status: "Scheduled",
+            auditorName: "—",
+            auditorPhone: "—",
+            attendance: [],
+            workingPapers: [],
+            files: {}
+          };
+
+          const status = audit.status || "Scheduled";
+          if (status === 'Completed') completed++;
+          else if (status === 'In Progress') inProgress++;
+
+          const manDays = audit.attendance ? audit.attendance.length : 0;
+          totalManDays += manDays;
+
+          const matches = d.code.includes(search) ||
+                          d.userId.toLowerCase().includes(search) ||
+                          d.name.toLowerCase().includes(search) ||
+                          d.location.toLowerCase().includes(search) ||
+                          (audit.auditorName && audit.auditorName.toLowerCase().includes(search)) ||
+                          (audit.auditorPhone && audit.auditorPhone.includes(search));
+          if (!matches) return;
+
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+
+          const statusClass = status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
+                              status === 'In Progress' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500';
+
+          let scrapPill = '<span class="text-slate-400 italic text-[11px]">Unanswered</span>';
+          if (audit.scrapInvoiceAvailable === 'Yes') {
+            scrapPill = (audit.scrapInvoicePhoto || audit.scrapInvoiceUrl || audit.scrapStatus === 'Yes') ? 
+              `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">Yes (Photo ✓)</span>` :
+              `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 font-bold border border-amber-200">Yes (No Photo)</span>`;
+          } else if (audit.scrapInvoiceAvailable === 'No') {
+            scrapPill = `<span class="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-semibold border border-slate-200">No Scrap</span>`;
+          }
+
+          const wpCount = audit.workingPapers ? audit.workingPapers.length : 0;
+          const wpPill = wpCount > 0 ? 
+            `<span class="px-2 py-0.5 rounded text-[10px] bg-rose-50 text-rose-700 font-bold border border-rose-200">${wpCount} PDF(s) ✓</span>` : 
+            `<span class="text-slate-400 italic text-[10px]">None</span>`;
+
+          const filePills = `
+            <div class="flex items-center gap-1">
+              ${audit.files?.zsdDump ? '<span title="Raw ZSD Dump Attached" class="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 font-bold border border-blue-200">ZSD ✓</span>' : ''}
+              ${audit.files?.reconciledExcel ? '<span title="Reconciled Excel Attached" class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">XLS ✓</span>' : ''}
+              ${(!audit.files?.zsdDump && !audit.files?.reconciledExcel) ? '<span class="text-slate-400 italic">None</span>' : ''}
+            </div>
+          `;
+
+          const hasAuditor = audit.auditorPhone && audit.auditorPhone !== "—";
+
+          tr.innerHTML = `
+            <td class="py-3 px-4 font-mono">
+              <span class="font-bold text-slate-900">${d.code}</span>
+              <span class="text-[10px] text-amber-700 block font-semibold">${d.userId}</span>
+            </td>
+            <td class="py-3 px-4 font-bold text-slate-700 font-mono">
+              Slot ${slotNum}
+            </td>
+            <td class="py-3 px-4">
+              <p class="font-bold text-slate-800">${d.name}</p>
+              <p class="text-[11px] text-slate-500">${d.location}, ${d.state}</p>
+            </td>
+            <td class="py-3 px-4">
+              <p class="font-semibold text-slate-800">${audit.auditorName || '—'}</p>
+              <p class="text-[11px] text-slate-500 font-mono">${audit.auditorPhone || '—'}</p>
+            </td>
+            <td class="py-3 px-4">${scrapPill}</td>
+            <td class="py-3 px-4 font-bold ${manDays > 0 ? 'text-indigo-600' : 'text-slate-400'}">${manDays} Day(s)</td>
+            <td class="py-3 px-4">${wpPill}</td>
+            <td class="py-3 px-4">${filePills}</td>
+            <td class="py-3 px-4">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusClass}">
+                ${status}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+              ${hasAuditor ? `
+                <button onclick="openViewAuditModal('${audit.id}')" title="View Audit Dossier" class="px-2.5 py-1 text-xs font-bold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition">
+                  View
+                </button>
+                <button onclick="leadRevokeSpecificSlot('${audit.id}', '${d.code}', ${slotNum}, '${audit.auditorName}')" title="Revoke this slot" class="px-2.5 py-1 text-xs font-bold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 rounded-lg transition">
+                  Revoke
+                </button>
+              ` : `
+                <span class="text-[11px] text-slate-400 italic">Slot Available</span>
+              `}
+            </td>
+          `;
+
+          tbody.appendChild(tr);
+        });
+      });
+
+      document.getElementById('kpiActive').textContent = inProgress;
+      document.getElementById('kpiCompleted').textContent = completed;
+      document.getElementById('kpiManDays').textContent = totalManDays;
+    }
+
+    function openConnectAdminModal() {
+      const modal = document.getElementById('connectAdminModal');
+      const depot = MASTER_DEPOTS.find(d => d.code === activeDepotCode);
+      const depotText = depot ? `${depot.code} - ${depot.name} (${depot.location})` : "None";
+
+      document.getElementById('modalAdminName').textContent = adminSettings.name;
+      document.getElementById('modalAdminPhone').textContent = adminSettings.phone;
+      document.getElementById('modalDepotCodeLabel').textContent = depotText;
+
+      const cleanPhone = adminSettings.phone.replace(/[^0-9]/g, '');
+      const auditorName = document.getElementById('inputAuditorName')?.value || "Auditor";
+      const message = encodeURIComponent(`Hi Lead Auditor, I need assistance for Parle Stock Audit. Active Depot: [${depotText}]. Auditor Name: ${auditorName}.`);
+
+      document.getElementById('btnAdminWhatsApp').href = `https://wa.me/${cleanPhone}?text=${message}`;
+      document.getElementById('btnAdminCall').href = `tel:${adminSettings.phone}`;
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeConnectAdminModal() {
+      document.getElementById('connectAdminModal').classList.add('hidden');
+    }
+
+    function loadAdminSettingsInputs() {
+      document.getElementById('adminSettingName').value = adminSettings.name;
+      document.getElementById('adminSettingPhone').value = adminSettings.phone;
+    }
+
+    function saveAdminSettings() {
+      const name = document.getElementById('adminSettingName').value.trim();
+      const phone = document.getElementById('adminSettingPhone').value.trim();
+
+      if (!name || !phone) {
+        alert("Please enter both Admin Name and Phone Number.");
+        return;
+      }
+
+      adminSettings = { name, phone };
+      localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(adminSettings));
+      alert("Admin Contact Settings updated!");
+    }
+
+    function exportMasterCSV() {
+      let csv = "Audit_ID,Depot_Code,Slot_Number,User_ID,Depot_Name,Location,State,Status,Auditor_Name,Auditor_Mobile,Drive_Folder_URL,Scrap_Invoice_Available,Total_Man_Days,Working_Papers_Count,Remarks,Last_Updated\n";
+
+      MASTER_DEPOTS.forEach(d => {
+        [1, 2].forEach(slotNum => {
+          const slotKey = `AUDIT-${d.code}-SLOT${slotNum}`;
+          const a = auditRecords.find(audit => audit.id === slotKey) || {};
+          const status = a.status || "Scheduled";
+          const manDays = a.attendance ? a.attendance.length : 0;
+          const remarks = (a.remarks || "").replace(/"/g, '""');
+          const scrapAvailable = a.scrapInvoiceAvailable || "Unanswered";
+          const wpCount = a.workingPapers ? a.workingPapers.length : 0;
+          const folderUrl = a.driveFolderUrl || "";
+
+          csv += `"${slotKey}","${d.code}",${slotNum},"${d.userId || ''}","${d.name || ''}","${d.location || ''}","${d.state || ''}","${status}","${a.auditorName || ''}","${a.auditorPhone || ''}","${folderUrl}","${scrapAvailable}",${manDays},${wpCount},"${remarks}","${a.lastUpdated || ''}"\n`;
+        });
+      });
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Parle_Audit_Master_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+    }
+  </script>
+</body>
+</html>
